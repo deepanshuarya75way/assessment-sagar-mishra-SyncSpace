@@ -14,6 +14,7 @@ const {
   updateMemberRole,
   removeMember,
   getActivity,
+  transferOwnership,
 } = require('../controllers/workspaceController');
 
 const router = express.Router();
@@ -50,4 +51,5 @@ router.post('/:id/members', loadWorkspace, requireRole('OWNER', 'ADMIN'), addMem
 router.patch('/:id/members/:userId', loadWorkspace, requireRole('OWNER', 'ADMIN'), roleValidation, validate, updateMemberRole);
 router.delete('/:id/members/:userId', loadWorkspace, requireRole('OWNER', 'ADMIN'), removeMember);
 
+router.post('/:id/transfer-ownership', loadWorkspace, requireRole('OWNER'), transferOwnership);
 module.exports = router;

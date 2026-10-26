@@ -18,6 +18,8 @@ import {
 import { selectUser } from '../../features/auth/authSlice';
 import { normalizeMember, getMyRole, ROLES } from '../../utils/constants';
 
+import { transferOwnership as transferOwnershipThunk} from '../../features/workspace/workspaceSlice';
+
 const ROLE_BADGE = {
   OWNER: 'bg-[#FEF3E2] text-[#C47B12]',
   ADMIN: 'bg-[#FDE8E8] text-[#E5484D]',
@@ -35,6 +37,24 @@ export default function MembersTab() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('MEMBER');
   const [inviting, setInviting] = useState(false);
+
+ const[transferMember, setTransferMember] = useState(null);
+  
+
+  const handleTransferOwnership = async () => {
+    if(!transferMember || !workspace?._id) return;
+
+    try {
+      await dispatch (
+        transferOwnershipThunk({
+          id:workspace._id, userId: transferMember.user?._id ?? transferMember.user,})
+      ).unwrap();
+
+      setTransferMember(null);
+    } catch(error){
+      console.error('Ownership transfer failed', error)
+    }
+  };
 
   useEffect(() => {
     if (wsError) {
@@ -185,6 +205,32 @@ export default function MembersTab() {
                     >
                       Copy email
                     </button>
+
+                   <button
+
+                   type="button"
+                   role="menuitem"
+                   className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-canvas"
+
+                   onClick={async(e) => {
+                    e.currentTarget.closest('details').open = false;
+
+                    const result =
+                      await dispatch(
+                        transferOwnershipThunk ({
+                          id:workspaceId, 
+                          userId:m.id,
+                          role:'OWNER',
+                        })
+                      );
+                      if(updateMemberRole.fulfilled.match(result)){
+                        await dispatch (fetchWorkspace(workspacId));
+                      }else{
+                        console.error('Ownsership transfer failed', result.payload);
+                      }
+                    }}
+                    > Transfer Ownership</button>
+      
                   </div>
                 </details>
               )}

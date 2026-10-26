@@ -95,6 +95,21 @@ export const updateMemberRole = createAsyncThunk(
   },
 );
 
+export const transferOwnership = createAsyncThunk('workspace/transferOwnership', async ({id, userId}, {rejectWithValue})=> 
+  {
+  try{
+    return ok(
+      await api.post(`/workspaces/${id}/transfer-ownership`,{userId}));
+
+   }
+    catch(e){
+      return rejectWithValue(
+        errMsg(e,'Could not transfer ownership')
+      );
+    }
+  }
+);
+
 // DELETE /api/workspaces/:id/members/:userId
 export const removeMember = createAsyncThunk(
   'workspace/removeMember',

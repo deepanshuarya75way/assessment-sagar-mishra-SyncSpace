@@ -22,6 +22,7 @@ const { getIo } = require('../sockets/socketHandler');
 const stream = require('stream');
 const { cloudinary, isCloudinaryConfigured } = require('../config/cloudinary');
 
+
 /** Upload an in-memory image buffer to Cloudinary, return the secure URL. */
 function uploadLogoBuffer(buffer, filename) {
   return new Promise((resolve, reject) => {
@@ -224,17 +225,19 @@ const updateMemberRole = asyncHandler(async (req, res) => {
     throw new ApiError('Only the OWNER can transfer ownership', 403);
   }
   // The last OWNER cannot be demoted (a workspace must always have one).
-  if (member.role === 'OWNER' && role !== 'OWNER') {
-    const ownerCount = req.workspace.members.filter((m) => m.role === 'OWNER').length;
-    if (ownerCount <= 1) {
-      throw new ApiError('Cannot demote the last OWNER of the workspace', 400);
+  if(role === 'OWNER'){
+    const currentOwner = req.workspace.members.find((m)=>m.role === 'OWNER');
+      
+    if(currentOwner && currentOwner.user.toString() !== member.user.toString()){
+      currentOwner.role = 'ADMIN';
     }
-  }
+      req.workspace.owner = member.user;
+    }
+      member.role = role;
 
-  member.role = role;
-  // Ownership transfer also moves the `owner` pointer.
-  if (role === 'OWNER') req.workspace.owner = member.user;
-  await req.workspace.save();
+    await req.workspace.save();
+
+
   await invalidateWorkspaceCache(req.workspace);
 
   await activityService.log(req.workspace._id, req.user._id, 'member.role_changed', 'member', member.user);
@@ -251,6 +254,47 @@ const updateMemberRole = asyncHandler(async (req, res) => {
   const populated = await populatedWorkspace(req.workspace._id);
   res.json({ success: true, data: populated });
 });
+
+const transferOwnership = asyncHandler(async(req,res)=>{
+  const {id} = req.params;
+  const {userId} = req.body;
+
+  if(!userId){
+    throw new ApiError('User Id is required',400);
+  }
+  const workspace = req.workspace;
+
+  if(workspace.owner.toString() === userId){
+    throw new ApiError('User is already the owner', 400);
+  }
+  const currentOwner = workspace.members.find((member)=> member.user.toString() === workspace.owner.toString());
+
+  const newOwner = workspace.members.find((member) => member.user.toString() === userId);
+
+  if(!newOwner){
+      throw new ApiError('User is not a member of this workspace',404);
+  }
+
+  if(!currentOwner || currentOwner.role !== 'OWNER'){
+    throw new ApiError('Current Owner membership is invalid',400);
+  }
+
+  currentOwner.role = 'ADMIN';
+  newOwner.role = 'OWNER';
+  workspace.owner = newOwner.user;
+
+  await workspace.save();
+
+  await invalidateWorkspaceCache(workspace);
+
+  const populated = await populatedWorkspace(workspace._id);
+
+  res.json({success:true, data:populated});
+
+});
+
+
+
 
 const removeMember = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -325,4 +369,5 @@ module.exports = {
   updateMemberRole,
   removeMember,
   getActivity,
+  transferOwnership,
 };

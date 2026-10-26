@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const memberSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -20,5 +19,4 @@ const workspaceSchema = new mongoose.Schema(
 );
 
 workspaceSchema.index({ 'members.user': 1 });
-
 module.exports = mongoose.model('Workspace', workspaceSchema);
